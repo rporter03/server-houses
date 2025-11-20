@@ -29,17 +29,7 @@ let houses = [
             "wrap around porch",
             "attached garage"
         ],
-        "main_image": "farm.webp",
-        "floor_plans": [
-            {
-                "name": "Main Level",
-                "image": "farm-floor1.webp"
-            },
-            {
-                "name": "Basement",
-                "image": "farm-floor2.webp"
-            }
-        ]
+        "main_image": "farm.webp"
     },
     {
         "_id":1,
@@ -51,21 +41,7 @@ let houses = [
             "grand porch",
             "covered deck"
         ],
-        "main_image": "mountain-house.webp",
-        "floor_plans": [
-            {
-                "name": "Main Level",
-                "image": "mountain-house1.webp"
-            },
-            {
-                "name": "Optional Lower Level",
-                "image": "mountain-house2.webp"
-            },
-            {
-                "name": "Main Level Slab Option",
-                "image": "mountain-house3.jpg"
-            }
-        ]
+        "main_image": "mountain-house.webp"
     },
     {
         "_id":2,
@@ -78,17 +54,7 @@ let houses = [
             "outdoor kitchen",
             "pool house"
         ],
-        "main_image": "farm.webp",
-        "floor_plans": [
-            {
-                "name": "Main Level",
-                "image": "lake-house1.webp"
-            },
-            {
-                "name": "Lower Level",
-                "image": "lake-house2.webp"
-            }
-        ]
+        "main_image": "farm.webp"
     }
 ]
 
@@ -126,6 +92,52 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
     }
 
     houses.push(house);
+    res.status(200).send(house);
+});
+
+app.put("/api/houses/:id", upload.single("img"), (req, res)=>{
+    //console.log(`You are trying to edit ${req.params.id}`);
+    //console.log(req.body);
+
+    const house = houses.find((h)=>h._id===parseInt(req.params.id));
+
+     if(!house) {
+        res.status(404).send("The house you wanted to edit is unavailable");
+        return;
+    }
+
+    const isValidUpdate = validateHouse(req.body);
+
+    if(isValidUpdate.error){
+        console.log("Invalid Info");
+        res.status(400).send(isValidUpdate.error.details[0].message);
+        return;
+    }
+
+    house.name = req.body.name;
+    house.description = req.body.description;
+    house.size = req.body.size;
+    house.bathrooms = req.body.bathrooms;
+    house.bedrooms = req.body.bedrooms;
+
+    if(req.file){
+        house.main_image = req.file.filename;
+    }
+
+    res.status(200).send(house);
+
+});
+
+app.delete("/api/houses/:id", (req,res)=>{
+    const house = houses.find((h)=>h._id===parseInt(req.params.id));
+    
+    if(!house) {
+        res.status(404).send("The house you wanted to delete is unavailable");
+        return;
+    }
+
+    const index = houses.indexOf(house);
+    houses.splice(index, 1);
     res.status(200).send(house);
 });
 
