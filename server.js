@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const Joi = require("joi");
+const mongoose = required("mongoose");
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
@@ -18,7 +19,7 @@ const storage = multer.diskStorage({
   
   const upload = multer({ storage: storage });
 
-let houses = [
+/* let houses = [
     {
         "_id":0,
         "name": "Farmhouse",
@@ -56,9 +57,30 @@ let houses = [
         ],
         "main_image": "farm.webp"
     }
-]
+] */
 
-app.get("/api/houses/", (req, res)=>{
+mongoose
+  .connect("mongodb+srv://porterclayton2003_db_user:SRUfH5ndmxyRvAw5@cluster0.pueteib.mongodb.net/")
+  .then(() => console.log("Connected to mongodb..."))
+  .catch((err) => console.error("could not connect ot mongodb...", err));
+
+const schema = new mongoose.Schema({
+  name: String,
+});
+
+const houseSchema = new mongoose.Schema({
+    name:String,
+    size:Number,
+    bedrooms:Number,
+    bathrooms:Number,
+    main_image:String,
+    features:[String]
+});
+
+const House = mongoose.model("House", houseSchema);
+
+app.get("/api/houses/", async(req, res)=>{
+    const houses = await House.find();
     res.send(houses);
 });
 
@@ -67,7 +89,7 @@ app.get("/api/houses/:id", (req, res)=>{
     res.send(house);
 });
 
-app.post("/api/houses", upload.single("img"), (req,res)=>{
+app.post("/api/houses", upload.single("img"), async(req,res)=>{
     console.log("in post request");
     const result = validateHouse(req.body);
 
@@ -79,11 +101,12 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
     }
 
     const house = {
-        _id: houses.length,
+        //_id: houses.length, don't need id because databse makes id
         name:req.body.name,
         size:req.body.size,
         bedrooms:req.body.bedrooms,
         bathrooms:req.body.bathrooms,
+        features:req.body.features.splint(",")
     };
 
     //adding image
@@ -91,20 +114,22 @@ app.post("/api/houses", upload.single("img"), (req,res)=>{
         house.main_image = req.file.filename;
     }
 
-    houses.push(house);
-    res.status(200).send(house);
+    /*houses.push(house);
+    res.status(200).send(house);*/
+    const newHouse = await house.save();
+    res.status(200).send(newHouse);
 });
 
-app.put("/api/houses/:id", upload.single("img"), (req, res)=>{
+app.put("/api/houses/:id", upload.single("img"), async(req, res)=>{
     //console.log(`You are trying to edit ${req.params.id}`);
     //console.log(req.body);
 
-    const house = houses.find((h)=>h._id===parseInt(req.params.id));
+    /*const house = houses.find((h)=>h._id===parseInt(req.params.id));
 
      if(!house) {
         res.status(404).send("The house you wanted to edit is unavailable");
         return;
-    }
+    }*/
 
     const isValidUpdate = validateHouse(req.body);
 
@@ -114,7 +139,7 @@ app.put("/api/houses/:id", upload.single("img"), (req, res)=>{
         return;
     }
 
-    house.name = req.body.name;
+    /*house.name = req.body.name;
     house.description = req.body.description;
     house.size = req.body.size;
     house.bathrooms = req.body.bathrooms;
@@ -122,22 +147,44 @@ app.put("/api/houses/:id", upload.single("img"), (req, res)=>{
 
     if(req.file){
         house.main_image = req.file.filename;
+    }*/
+
+    const fieldsToUpdate = {
+        name:req.body.name,
+        description:req.body.description,
+        size:req.body.size,
+        bathrooms:req.body.bathrooms,
+        bedrooms:req.body.bedrooms,
+        features:req.body.features.split(",")
     }
 
+    if(req.file) {
+        fieldsToUpdate.main_image = req.file.filename;
+    }
+
+    const success = await House.updateOne({_id:req.params.id}, fieldsToUpdate);
+
+    if(!success){
+        res.status(404).send("We couldn't locate the house to edit");
+        return;
+    }
+
+    const house = await House.findById(req.params.id);
     res.status(200).send(house);
 
 });
 
-app.delete("/api/houses/:id", (req,res)=>{
-    const house = houses.find((h)=>h._id===parseInt(req.params.id));
-    
+app.delete("/api/houses/:id", async(req,res)=>{
+    //const house = houses.find((h)=>h._id===parseInt(req.params.id));
+    const house = await House.findByIdAndDelete(req.params.id);
+
     if(!house) {
         res.status(404).send("The house you wanted to delete is unavailable");
         return;
     }
 
-    const index = houses.indexOf(house);
-    houses.splice(index, 1);
+    /*const index = houses.indexOf(house);
+    houses.splice(index, 1);*/
     res.status(200).send(house);
 });
 
